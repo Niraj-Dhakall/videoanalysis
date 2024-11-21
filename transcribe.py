@@ -53,18 +53,7 @@ from vid2cleantxt.v2ct_utils import load_spacy_models
 
 load_spacy_models()
 
-from vid2cleantxt.audio2text_functions import (
-    corr,
-    create_metadata_df,
-    get_av_fmts,
-    init_neuspell,
-    init_symspell,
-    prep_transc_pydub,
-    quick_keys,
-    setup_out_dirs,
-    spellcorrect_pipeline,
-    trim_fname,
-)
+
 from vid2cleantxt.v2ct_utils import (
     NullIO,
     check_runhardware,
@@ -100,81 +89,6 @@ def load_whisper_modules(
     )
 
     return processor, model
-
-
-def load_wav2vec2_modules(hf_id: str):
-    """
-    load_transcription_objects - load the transcription objects from huggingface
-
-    Parameters
-    ----------
-    hf_id : str, the id of the model to load on huggingface, for example: "facebook/wav2vec2-base-960h" or "facebook/hubert-large-ls960-ft"
-
-    Returns
-    -------
-    tokenizer : transformers.Wav2Vec2Processor, the tokenizer object
-    model: transformers.Wav2Vec2ForCTC, the model object. For specialised models, this is a specialised object such as HubertForCTC
-    """
-
-    tokenizer = Wav2Vec2Processor.from_pretrained(
-        hf_id
-    )  # use wav2vec2processor for tokenization always
-    if "wavlm" in hf_id.lower():
-
-        print(f"Loading wavlm model - {hf_id}")
-        model = WavLMForCTC.from_pretrained(hf_id)
-    elif "hubert" in hf_id.lower():
-        print(f"Loading hubert model - {hf_id}")
-        model = HubertForCTC.from_pretrained(
-            hf_id
-        )  # for example --model "facebook/hubert-large-ls960-ft"
-    else:
-        # for example --model "facebook/wav2vec2-large-960h-lv60-self"
-        print(f"Loading wav2vec2 model - {hf_id}")
-        model = Wav2Vec2ForCTC.from_pretrained(hf_id)
-    logging.info(f"Loaded model {hf_id} from huggingface")
-    return tokenizer, model
-
-
-def wav2vec2_islarge(model_obj):
-    """
-    wav2vec2_check_size - compares the size of the passed model object, and whether
-    it is in fact a wav2vec2 model. this is because the large model is a special case and
-    uses an attention mechanism that is not compatible with the rest of the models
-
-    https://huggingface.co/facebook/wav2vec2-base-960h
-
-    Parameters
-    ----------
-    model_obj : transformers.Wav2Vec2ForCTC, the model object to check
-
-    Returns
-    -------
-    is_large, whether the model is the large wav2vec2 model or not
-    """
-    approx_sizes = {
-        "base": 94396320,
-        "large": 315471520,  # recorded by  loading the model in known environment
-    }
-    if isinstance(model_obj, HubertForCTC):
-        logging.info("HubertForCTC is not a wav2vec2 model so not checking size")
-        return False
-    elif not isinstance(model_obj, Wav2Vec2ForCTC):
-        warnings.warn(
-            message="Model is not a wav2vec2 model - this function is for wav2vec2 models only",
-            category=None,
-            stacklevel=1,
-        )
-        return (
-            False  # not a wav2vec2 model - return false so it is handled per standard
-        )
-
-    np_proposed = model_obj.num_parameters()
-
-    dist_from_base = abs(np_proposed - approx_sizes.get("base"))
-    dist_from_large = abs(np_proposed - approx_sizes.get("large"))
-    return True if dist_from_large < dist_from_base else False
-
 
 def save_transc_results(
     out_dir,
